@@ -1,7 +1,7 @@
 # spark_demo/S_ML/tests/test_rabbitmq_consumer.py
 import pytest
 import pika
-from S_ML.base.rabbitmq_consumer import RabbitMQConsumer
+from base.rabbitmq_consumer import RabbitMQConsumer
 
 @pytest.fixture
 def mock_rabbitmq(mocker):

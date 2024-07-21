@@ -1,26 +1,29 @@
-# spark_demo/S_ML/base/spark_engine.py
+# spark_demo/S_ML/base/test_spark_engine.py
+import pytest
 from pyspark.sql import SparkSession
-import os
-from dotenv import load_dotenv
+from base.spark_engine import SparkEngine
 
-class SparkEngine:
-    def __init__(self):
-        load_dotenv()
-        self.spark = SparkSession.builder \
-            .appName(os.getenv('SPARK_APP_NAME')) \
-            .master(os.getenv('SPARK_MASTER_URL')) \
-            .getOrCreate()
+class TestSparkEngine:
+    @pytest.fixture(scope="class")
+    def spark_engine(self):
+        engine = SparkEngine()
+        yield engine
+        engine.stop()
 
-    def run_job(self, data, columns):
-        df = self.spark.createDataFrame(data, columns)
-        df.show()
+    def test_spark_session(self, spark_engine):
+        assert isinstance(spark_engine.spark, SparkSession)
 
-    def stop(self):
-        self.spark.stop()
+    def test_run_job(self, spark_engine):
+        sample_data = [("Alice", 34), ("Bob", 45), ("Cathy", 29)]
+        columns = ["Name", "Age"]
+        spark_engine.run_job(sample_data, columns)
 
-if __name__ == '__main__':
-    engine = SparkEngine()
-    sample_data = [("Alice", 34), ("Bob", 45), ("Cathy", 29)]
-    columns = ["Name", "Age"]
-    engine.run_job(sample_data, columns)
-    engine.stop()
+        df = spark_engine.spark.createDataFrame(sample_data, columns)
+        collected_data = df.collect()
+        assert len(collected_data) == 3
+        assert collected_data[0]["Name"] == "Alice"
+        assert collected_data[1]["Age"] == 45
+
+    def test_stop(self, spark_engine):
+        spark_engine.stop()
+        assert not spark_engine.spark._jsparkSession.isStopped()

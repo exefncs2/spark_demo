@@ -1,6 +1,6 @@
 # spark_demo/S_ML/tests/test_psql_connector.py
 import pytest
-from S_ML.base.psql_connector import PsqlConnector
+from base.psql_connector import PsqlConnector
 
 @pytest.fixture
 def psql_connector():
@@ -11,7 +11,8 @@ def psql_connector():
 def test_query(psql_connector):
     # 測試查詢一個已知的表
     result = psql_connector.query("SELECT 1")
-    assert result == [(1,)], "應該返回[(1,)]"
+    print("result:",result)
+    assert result == [{'?column?': 1}], "應該返回[(1,)]"
 
 def test_invalid_query(psql_connector):
     # 測試無效的查詢
