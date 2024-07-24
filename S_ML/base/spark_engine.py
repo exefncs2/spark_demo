@@ -4,10 +4,10 @@ import os
 from dotenv import load_dotenv
 
 class SparkEngine:
-    def __init__(self):
+    def __init__(self, app_name):
         load_dotenv()
         self.spark = SparkSession.builder \
-            .appName(os.getenv('SPARK_APP_NAME')) \
+            .appName(app_name) \
             .master(os.getenv('SPARK_MASTER_URL')) \
             .getOrCreate()
 
@@ -19,7 +19,7 @@ class SparkEngine:
         self.spark.stop()
 
 if __name__ == '__main__':
-    engine = SparkEngine()
+    engine = SparkEngine("test")
     sample_data = [("Alice", 34), ("Bob", 45), ("Cathy", 29)]
     columns = ["Name", "Age"]
     engine.run_job(sample_data, columns)

@@ -1,39 +1,89 @@
-# spark_demo/S_ML/base/rabbitmq_consumer.py
-import pika
-import os
-from dotenv import load_dotenv
+# -*- coding: utf-8 -*-
+# pylint: disable=C0111,C0103,R0205
+
+import functools
+import logging
+import threading
 import time
+import pika
+from pika.exchange_type import ExchangeType
+from dotenv import load_dotenv
+import os
 
-class RabbitMQConsumer:
-    def __init__(self):
+class RabbitMQConsumerEngine:
+    def __init__(self, exchange, exchange_type, queue, routing_key, heartbeat=10, prefetch_count=1):
         load_dotenv()
-        self.connection = self.create_connection()
-        self.channel = self.connection.channel()
-        self.channel.queue_declare(queue='task_queue', durable=True)
+        
+        self.LOG_FORMAT = ('%(levelname) -10s %(asctime)s %(name) -30s %(funcName) '
+                           '-35s %(lineno) -5d: %(message)s')
+        logging.basicConfig(level=logging.DEBUG, format=self.LOG_FORMAT)
+        self.LOGGER = logging.getLogger(__name__)
 
-    def create_connection(self):
-        attempts = 5
-        for i in range(attempts):
-            try:
-                return pika.BlockingConnection(
-                    pika.ConnectionParameters(host=os.getenv('RABBITMQ_HOST')))
-            except pika.exceptions.AMQPConnectionError as e:
-                print(f"連接失敗，重試 ({i+1}/{attempts})...")
-                time.sleep(5)
-        raise Exception("無法連接到 RabbitMQ 服務")
+        self.credentials = pika.PlainCredentials(os.getenv("RABBITMQ_USER"), os.getenv("RABBITMQ_PASSWORD"))
+        self.parameters = pika.ConnectionParameters(
+            'localhost', credentials=self.credentials, heartbeat=heartbeat)
+        self.connection = pika.BlockingConnection(self.parameters)
+        self.channel = self.connection.channel()
+
+        self.exchange = exchange
+        self.exchange_type = exchange_type
+        self.queue = queue
+        self.routing_key = routing_key
+        self.prefetch_count = prefetch_count
+        self.threads = []
+
+        self.setup()
+
+    def setup(self):
+        self.channel.exchange_declare(
+            exchange=self.exchange,
+            exchange_type=self.exchange_type,
+            passive=False,
+            durable=True,
+            auto_delete=False)
+        self.channel.queue_declare(queue=self.queue, auto_delete=True)
+        self.channel.queue_bind(
+            queue=self.queue, exchange=self.exchange, routing_key=self.routing_key)
+        self.channel.basic_qos(prefetch_count=self.prefetch_count)
+
+    def ack_message(self, ch, delivery_tag):
+        if ch.is_open:
+            ch.basic_ack(delivery_tag)
+        else:
+            pass
+
+    def do_work(self, ch, delivery_tag, body):
+        thread_id = threading.get_ident()
+        self.LOGGER.info('Thread id: %s Delivery tag: %s Message body: %s', thread_id,
+                    delivery_tag, body)
+        time.sleep(10)
+        cb = functools.partial(self.ack_message, ch, delivery_tag)
+        ch.connection.add_callback_threadsafe(cb)
+
+    def on_message(self, ch, method_frame, _header_frame, body):
+        delivery_tag = method_frame.delivery_tag
+        t = threading.Thread(target=self.do_work, args=(ch, delivery_tag, body))
+        t.start()
+        self.threads.append(t)
 
     def start_consuming(self):
-        self.channel.basic_consume(queue='task_queue', on_message_callback=self.callback, auto_ack=True)
-        print('Waiting for messages. To exit press CTRL+C')
-        self.channel.start_consuming()
+        on_message_callback = functools.partial(self.on_message)
+        self.channel.basic_consume(on_message_callback=on_message_callback, queue=self.queue)
+        try:
+            self.channel.start_consuming()
+        except KeyboardInterrupt:
+            self.channel.stop_consuming()
 
-    def callback(self, ch, method, properties, body):
-        print(f"Received {body}")
-        # 在這裡處理消息
+        for thread in self.threads:
+            thread.join()
 
-    def stop(self):
         self.connection.close()
 
-if __name__ == '__main__':
-    consumer = RabbitMQConsumer()
-    consumer.start_consuming()
+if __name__ == "__main__":
+    engine = RabbitMQConsumerEngine(
+        exchange="test_exchange",
+        exchange_type=ExchangeType.direct,
+        queue="standard",
+        routing_key="standard_key"
+    )
+    engine.start_consuming()

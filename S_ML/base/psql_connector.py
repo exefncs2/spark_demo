@@ -2,7 +2,6 @@
 from dotenv import load_dotenv
 import os
 import psycopg2
-from pydantic import BaseModel
 
 class PsqlConnector:
     def __init__(self):
@@ -10,35 +9,24 @@ class PsqlConnector:
         self.connection = psycopg2.connect(
             host=os.getenv('PG_HOST'),
             port=os.getenv('PG_PORT'),
-            dbname=os.getenv('PG_DB')
-            # 使用 Kerberos 或其他方式认证，不使用用户名和密码
+            dbname=os.getenv('PG_DB'),
+            user=os.getenv('PG_USER'),
+            password=os.getenv('PG_PASSWORD'),
         )
 
-    def query(self, sql_query, params=None):
+    def execute_query(self, sql_query):
         cursor = self.connection.cursor()
-        cursor.execute(sql_query, params)
+        cursor.execute(sql_query)
         columns = [desc[0] for desc in cursor.description]
         result = cursor.fetchall()
         cursor.close()
         return [dict(zip(columns, row)) for row in result]
 
-    def insert(self, sql_insert, data: BaseModel):
+    def execute_command(self, sql_command):
         cursor = self.connection.cursor()
-        cursor.execute(sql_insert, data.dict().values())
+        cursor.execute(sql_command)
         self.connection.commit()
         cursor.close()
 
-    def update(self, sql_update, data: BaseModel):
-        cursor = self.connection.cursor()
-        cursor.execute(sql_update, data.dict().values())
-        self.connection.commit()
-        cursor.close()
-
-    def delete(self, sql_delete, params):
-        cursor = self.connection.cursor()
-        cursor.execute(sql_delete, params)
-        self.connection.commit()
-        cursor.close()
-
-    def close(self):
+    def close_connection(self):
         self.connection.close()
