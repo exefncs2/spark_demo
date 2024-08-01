@@ -1,19 +1,18 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=C0111,C0103,R0205
-
+# base/rabbitmq_consumer_engine.py
 import functools
 import logging
 import threading
-import time
 import pika
 from pika.exchange_type import ExchangeType
 from dotenv import load_dotenv
 import os
 
+load_dotenv()
+
 class RabbitMQConsumerEngine:
-    def __init__(self, exchange, exchange_type, queue, routing_key, heartbeat=10, prefetch_count=1):
-        load_dotenv()
-        
+    def __init__(self, exchange, exchange_type, queue, routing_key, callback, heartbeat=10, prefetch_count=1, durable=True, auto_delete=False):
         self.LOG_FORMAT = ('%(levelname) -10s %(asctime)s %(name) -30s %(funcName) '
                            '-35s %(lineno) -5d: %(message)s')
         logging.basicConfig(level=logging.DEBUG, format=self.LOG_FORMAT)
@@ -29,7 +28,10 @@ class RabbitMQConsumerEngine:
         self.exchange_type = exchange_type
         self.queue = queue
         self.routing_key = routing_key
+        self.callback = callback
         self.prefetch_count = prefetch_count
+        self.durable = durable
+        self.auto_delete = auto_delete
         self.threads = []
 
         self.setup()
@@ -39,13 +41,13 @@ class RabbitMQConsumerEngine:
             exchange=self.exchange,
             exchange_type=self.exchange_type,
             passive=False,
-            durable=True,
-            auto_delete=False)
-        self.channel.queue_declare(queue=self.queue, auto_delete=True)
+            durable=self.durable,
+            auto_delete=self.auto_delete)
+        self.channel.queue_declare(queue=self.queue, durable=self.durable)
         self.channel.queue_bind(
             queue=self.queue, exchange=self.exchange, routing_key=self.routing_key)
         self.channel.basic_qos(prefetch_count=self.prefetch_count)
-
+    
     def ack_message(self, ch, delivery_tag):
         if ch.is_open:
             ch.basic_ack(delivery_tag)
@@ -54,9 +56,8 @@ class RabbitMQConsumerEngine:
 
     def do_work(self, ch, delivery_tag, body):
         thread_id = threading.get_ident()
-        self.LOGGER.info('Thread id: %s Delivery tag: %s Message body: %s', thread_id,
-                    delivery_tag, body)
-        time.sleep(10)
+        self.LOGGER.info('Thread id: %s Delivery tag: %s Message body: %s', thread_id, delivery_tag, body)
+        self.callback(body)
         cb = functools.partial(self.ack_message, ch, delivery_tag)
         ch.connection.add_callback_threadsafe(cb)
 
@@ -78,12 +79,3 @@ class RabbitMQConsumerEngine:
             thread.join()
 
         self.connection.close()
-
-if __name__ == "__main__":
-    engine = RabbitMQConsumerEngine(
-        exchange="test_exchange",
-        exchange_type=ExchangeType.direct,
-        queue="standard",
-        routing_key="standard_key"
-    )
-    engine.start_consuming()

@@ -14,6 +14,22 @@ class SparkEngine:
     def run_job(self, data, columns):
         df = self.spark.createDataFrame(data, columns)
         df.show()
+        
+    def process_data(self, data):
+        if not data:
+            return None
+
+        # 将数据转换为 Spark DataFrame
+        df = self.spark.createDataFrame(data)
+
+        # 显示数据模式
+        df.printSchema()
+
+        # 进行一些示例数据处理
+        df.show()
+
+        # 返回处理后的数据
+        return df
 
     def stop(self):
         self.spark.stop()
