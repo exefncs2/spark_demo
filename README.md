@@ -59,3 +59,4 @@ pip install -r requirements.txt
 2. 增加更多樣的測試。
 3. 完整的文件。
 4. 完善 pytest 測試。
+5. 包成 docker 即裝即完成。
