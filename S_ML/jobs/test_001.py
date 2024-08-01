@@ -9,13 +9,13 @@ logger = logging.getLogger(__name__)
 
 def main():
     # 定義參數
-    schema = "ODS"
+    Schema = "ODS"
     tables = ['wine_quality_red', 'wine_quality_white']
     redis_key_prefix = 'wine_quality'
 
     # 將數據從 PostgreSQL 加載到 Redis
     for table in tables:
-        load_table_to_redis(schema, table, redis_key_prefix)
+        load_table_to_redis(Schema, table, redis_key_prefix)
 
     # 從 Redis 中讀取數據
     redis_key = f"{redis_key_prefix}:wine_quality_red"

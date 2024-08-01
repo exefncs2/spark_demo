@@ -1,5 +1,5 @@
 import os
-import json
+import orjson as json
 import queue
 import threading
 import time
@@ -13,41 +13,41 @@ import logging
 
 load_dotenv()
 
-# 设置日志
+# 設置日誌
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# 创建线程安全的队列
+# 創建線程安全的隊列
 local_queue = queue.Queue()
 
 def callback(body):
-    logger.info("Received message:")
+    logger.info("收到消息:")
     message = json.loads(body)
     logger.info(message)
     local_queue.put(message)
 
 def process_messages():
-    # 使用 Spark 处理数据
+    # 使用 Spark 處理數據
     spark_engine = SparkEngine("WineQualityPrediction")
 
-    # 从本地队列中读取所有消息
+    # 從本地隊列中讀取所有消息
     messages = []
     while not local_queue.empty():
         messages.append(local_queue.get())
-    print(f"messages: {messages}")
+    logger.info(f"messages: {messages}")
     
     if messages:
         processed_data = spark_engine.process_data(messages)
 
         if processed_data is not None:
-            # 将处理后的数据转换为 Pandas DataFrame
+            # 將處理後的數據轉換為 Pandas DataFrame
             pandas_df = processed_data.toPandas()
 
-            # 使用 PsqlConnector 将数据写入 PostgreSQL
+            # 使用 PsqlConnector 將數據寫入 PostgreSQL
             psql_connector = PsqlConnector()
             table_name = "wine_quality_predictions"
 
-            # 创建表结构
+            # 創建表結構
             create_table_query = f'''
             CREATE TABLE IF NOT EXISTS "DWH".{table_name} (
                 id SERIAL PRIMARY KEY,
@@ -57,10 +57,10 @@ def process_messages():
             '''
             psql_connector.execute_command(create_table_query)
 
-            # 将数据写入 PostgreSQL
+            # 將數據寫入 PostgreSQL
             try:
                 for index, row in pandas_df.iterrows():
-                    # 使用 Pydantic 模型来进行数据验证和转换
+                    # 使用 Pydantic 模型來進行數據驗證和轉換
                     prediction_data = WineQualityPrediction(
                         id=index,
                         prediction=row['prediction'],
@@ -71,12 +71,12 @@ def process_messages():
                     VALUES ({prediction_data.id},{prediction_data.prediction}, {prediction_data.residual_sugar})
                     '''
                     psql_connector.execute_command(insert_query)
-                    print(f"輸出 <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<DWH.{table_name}<<<<<<<<<<<<<<<<<<<<<<<<<<<")
+                    logger.info(f"輸出 <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<DWH.{table_name}<<<<<<<<<<<<<<<<<<<<<<<<<<<")
                     
-                logger.info(f"Data written to PostgreSQL table {table_name}")
+                logger.info(f"數據寫入 PostgreSQL 表 {table_name}")
             except Exception as e:
-                logger.error(f"Error writing data to PostgreSQL: {e}")
-                logger.error(f"Exception details: {e.__class__.__name__}: {str(e)}")
+                logger.error(f"寫入數據到 PostgreSQL 時出錯: {e}")
+                logger.error(f"異常詳情: {e.__class__.__name__}: {str(e)}")
 
     spark_engine.stop()
 
@@ -95,15 +95,19 @@ def consume_predictions():
         auto_delete=False
     )
 
-    logger.info('Waiting for messages. To exit press CTRL+C')
+    logger.info('等待消息中。按下 CTRL+C 退出')
     rabbitmq_engine.start_consuming()
 
+def monitor_and_process():
+    while True:
+        if not local_queue.empty():
+            process_messages()
+        time.sleep(1)  # 每秒檢查一次隊列是否有消息
+
 if __name__ == "__main__":
-    # 启动RabbitMQ消费者
+    # 啟動 RabbitMQ 消費者
     consumer_thread = threading.Thread(target=consume_predictions)
     consumer_thread.start()
 
-    # 定期处理本地队列中的消息
-    while True:
-        process_messages()
-        time.sleep(60)  # 每60秒处理一次消息
+    # 監聽並處理本地隊列中的消息
+    monitor_and_process()

@@ -14,7 +14,7 @@ import logging
 
 load_dotenv()
 
-# 設置日志
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
