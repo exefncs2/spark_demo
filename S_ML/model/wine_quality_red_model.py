@@ -2,7 +2,7 @@
 from pydantic import BaseModel, Field
 
 class WineQualityRed(BaseModel):
-    id: int
+    id: str
     fixed_acidity: float
     volatile_acidity: float
     citric_acid: float

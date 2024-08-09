@@ -10,6 +10,7 @@ from base.psql_connector import PsqlConnector
 from model.wine_quality_predictions_model import WineQualityPrediction
 from dotenv import load_dotenv
 import logging
+import uuid
 
 load_dotenv()
 
@@ -50,7 +51,7 @@ def process_messages():
             # 創建表結構
             create_table_query = f'''
             CREATE TABLE IF NOT EXISTS "DWH".{table_name} (
-                id SERIAL PRIMARY KEY,
+                id uuid PRIMARY KEY,
                 prediction FLOAT,
                 residual_sugar FLOAT
             )
@@ -62,7 +63,7 @@ def process_messages():
                 for index, row in pandas_df.iterrows():
                     # 使用 Pydantic 模型來進行數據驗證和轉換
                     prediction_data = WineQualityPrediction(
-                        id=index,
+                        id=f"'{str(uuid.uuid4())}'",
                         prediction=row['prediction'],
                         residual_sugar=row['residual_sugar']
                     )

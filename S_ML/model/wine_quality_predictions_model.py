@@ -2,7 +2,7 @@
 from pydantic import BaseModel
 
 class WineQualityPrediction(BaseModel):
-    id: int
+    id: str
     prediction: float
     residual_sugar: float
 

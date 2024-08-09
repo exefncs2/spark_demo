@@ -27,6 +27,7 @@
 已經有一個 jobs（`test_001.py`），可以將資料丟到 Redis 並發送到 RabbitMQ 隊列 `[wine_quality_predictions]`（有些版本需要先手動建立）。還有一個 worker 可以監聽 exchange `[wine_quality_exchange]`。
 
 > 注意：此測試設置 ID，因此會有因為未清空而無法正常寫入的情況發生。
+        0.1.1更改為UUID已無此問題
 
 ## Structure
 
@@ -60,3 +61,4 @@ pip install -r requirements.txt
 3. 完整的文件。
 4. 完善 pytest 測試。
 5. 包成 docker 即裝即完成。
+6. 加入vue3的簡易瀏覽功能。
