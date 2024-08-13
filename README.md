@@ -24,15 +24,20 @@
 
 ### 現有的 Jobs 和 Worker
 
-已經有一個 jobs（`test_001.py`），可以將資料丟到 Redis 並發送到 RabbitMQ 隊列 `[wine_quality_predictions]` 還有一個 worker （`test002.py`） 可以監聽 exchange `[wine_quality_exchange]`並輸出到DWH.wine_quality_predictions，可以透過其他工具掛載，測試只要使用[base_flow](notebooks/base_flow.ipynb)就能執行。
-
-> 注意：
-       - RabbitMQ可能要自行建立隊列或是容器
-       - test002是監聽式不會自動停下會一值等待隊列是否有新資料
+1. 已經有一個 jobs（`test_001.py`），可以將資料丟到 Redis 並發送到 RabbitMQ 隊列 `[wine_quality_predictions]` 
+2. 還有一個 worker （`test002.py`） 可以監聽 exchange `[wine_quality_exchange]`並輸出到DWH.wine_quality_predictions，可以透過其他工具掛載，測試只要使用[base_flow](notebooks/base_flow.ipynb)就能執行，
+特別注意：
+- RabbitMQ可能要自行建立隊列或是容器
+- test002是監聽式不會自動停下會一值等待隊列是否有新資料
 
         
+3. vue3 demo 可用[start_work](notebooks/start_work.ipynb)啟動並到127.0.0.1:8000看
 
-新增vue3 demo 可用[start_work](notebooks/start_work.ipynb)啟動並到127.0.0.1:8000看
+根據[insert_test_data](notebooks/insert_test_data.ipynb)取得資料之後，用簡單的demo資料流整理
+[base_flow](notebooks/base_flow.ipynb)最後用[start_work](notebooks/start_work.ipynb)串接成頁面
+最終結果如下
+![酒類](image/image.png)
+
 
 ## Structure
 
