@@ -60,7 +60,10 @@
 
 ```bash
 pip install -r requirements.txt
+
+npm i 
 ```
+
 
 ## Future
 
