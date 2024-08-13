@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>葡萄酒品質預測展示</title>
+    <!-- 引入 Bootstrap CSS，使網頁美觀並支援響應式設計 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- 引入 Vue.js 與 Chart.js，用於前端的數據綁定與圖表生成 -->
+    <script src="https://cdn.jsdelivr.net/npm/vue@3"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div id="app" class="container mt-5">
+        <!-- 頁面標題，使用 Bootstrap 進行排版 -->
+        <h1 class="text-center mb-4">葡萄酒品質預測展示</h1>
+
+        <!-- 表單組，用於選擇顯示的前幾條數據 -->
+        <div class="mb-4">
+            <label for="topN" class="form-label">顯示前幾項資料:</label>
+            <!-- 使用 v-model 雙向綁定，將輸入框與 topN 數據綁定 -->
+            <input type="number" v-model="topN" id="topN" min="1" class="form-control" style="width: 100px; display: inline-block;">
+            <!-- 確認按鈕 -->
+            <button @click="updateCharts" class="btn btn-primary ml-2">確認</button>
+        </div>
+
+        <!-- 圖表容器，使用 Bootstrap 進行響應式排版 -->
+        <div class="row">
+            <div class="col-md-12">
+                <!-- 折線圖 -->
+                <canvas id="lineChart"></canvas>
+            </div>
+        </div>
+
+        <!-- 表格容器 -->
+        <div class="row mt-4">
+            <div class="col-md-12">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>UUID</th>
+                            <th>預測值</th>
+                            <th>殘糖值</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-for="(id, index) in ids.slice(0, topN)" :key="id">
+                            <td>{{ id }}</td>
+                            <td>{{ predictions[index] }}</td>
+                            <td>{{ residualSugars[index] }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const app = Vue.createApp({
+            data() {
+                return {
+                    // 用於儲存 API 獲取的預測值與殘糖值數據
+                    predictions: [],
+                    residualSugars: [],
+                    // 用於儲存每筆數據的 UUID
+                    ids: [],
+                    // 用於控制顯示前幾項數據，預設顯示前10項
+                    topN: 10,
+                    // 儲存 Chart.js 圖表實例，便於後續銷毀和重繪
+                    lineChartInstance: null
+                };
+            },
+            mounted() {
+                // 在 Vue 實例掛載後立即調用 fetchData 方法，獲取數據
+                this.fetchData();
+            },
+            methods: {
+                // 從 FastAPI 獲取數據的方法
+                async fetchData() {
+                    // 發送 HTTP GET 請求至 API 獲取預測數據
+                    const response = await fetch('http://127.0.0.1:8000/predictions/');
+                    const data = await response.json();
+                    
+                    // 將獲取的數據分別存儲在 ids, predictions 和 residualSugars 中
+                    this.ids = data.map(item => item.id);
+                    this.predictions = data.map(item => item.prediction);
+                    this.residualSugars = data.map(item => item.residual_sugar);
+
+                    // 初次渲染圖表和表格
+                    this.renderLineChart();
+                },
+                // 渲染折線圖的方法
+                renderLineChart() {
+                    // 如果圖表實例已存在，則先銷毀它以防止重疊
+                    if (this.lineChartInstance) {
+                        this.lineChartInstance.destroy();
+                    }
+
+                    const ctx = document.getElementById('lineChart').getContext('2d');
+                    this.lineChartInstance = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            // X軸使用 UUID 標籤
+                            labels: this.ids.slice(0, this.topN),
+                            datasets: [
+                                {
+                                    label: '預測值',
+                                    data: this.predictions.slice(0, this.topN),
+                                    borderColor: 'rgba(75, 192, 192, 1)',
+                                    borderWidth: 2,
+                                    fill: false
+                                },
+                                {
+                                    label: '殘糖值',
+                                    data: this.residualSugars.slice(0, this.topN),
+                                    borderColor: 'rgba(255, 99, 132, 1)',
+                                    borderWidth: 2,
+                                    fill: false
+                                }
+                            ]
+                        },
+                        options: {
+                            responsive: true,
+                            scales: {
+                                x: {
+                                    title: {
+                                        display: true,
+                                        text: 'UUID'
+                                    }
+                                },
+                                y: {
+                                    title: {
+                                        display: true,
+                                        text: '值'
+                                    }
+                                }
+                            }
+                        }
+                    });
+                },
+                // 當用戶點擊確認按鈕時，重新渲染圖表和表格
+                updateCharts() {
+                    this.renderLineChart();
+                }
+            }
+        });
+
+        // 將 Vue 實例掛載到 id 為 #app 的 DOM 元素上
+        app.mount('#app');
+    </script>
+</body>
+</html>
