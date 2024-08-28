@@ -2,7 +2,7 @@
 # S_ML
 這是一個 demo，旨在展示方法。
 流程圖(線上更新)
-https://docs.google.com/drawings/d/1RFKfnPxElctGqfn72ukrSXaJ9x4Rbvs2ob_SG469kb4/edit?hl=zh-tw
+<img src="https://docs.google.com/drawings/d/1RFKfnPxElctGqfn72ukrSXaJ9x4Rbvs2ob_SG469kb4/pub?w=1440&amp;h=1080">
 
 ## 測試前置要求
 
